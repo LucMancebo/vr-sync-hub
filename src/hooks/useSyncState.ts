@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { PlaybackState, SyncMessage, ConnectedDevice, Video } from '@/types/video';
+import { PlaybackState, ConnectedDevice, Video } from '@/types/video';
 
 // Simulated sync state - in production, this would use WebSockets
 const SYNC_CHANNEL = new BroadcastChannel('vr-sync');
@@ -11,7 +11,7 @@ export const useSyncState = (isAdmin: boolean = false) => {
     currentTime: 0,
     timestamp: Date.now(),
   });
-  
+
   const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [videos, setVideos] = useState<Video[]>([
     {
@@ -31,7 +31,7 @@ export const useSyncState = (isAdmin: boolean = false) => {
       size: 114984274,
     },
   ]);
-  
+
   const deviceId = useRef(`device-${Math.random().toString(36).substr(2, 9)}`);
 
   // Register device on mount
@@ -50,11 +50,11 @@ export const useSyncState = (isAdmin: boolean = false) => {
     // Listen for sync messages
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
-      
+
       if (data.type === 'sync-state' && !isAdmin) {
         setPlaybackState(data.state);
       }
-      
+
       if (data.type === 'device-connect' && isAdmin) {
         setConnectedDevices(prev => {
           const exists = prev.find(d => d.id === data.device.id);
@@ -62,9 +62,30 @@ export const useSyncState = (isAdmin: boolean = false) => {
           return [...prev, data.device];
         });
       }
-      
+
       if (data.type === 'device-disconnect' && isAdmin) {
         setConnectedDevices(prev => prev.filter(d => d.id !== data.device.id));
+      }
+
+      // When a new video is added by admin, receive it (as a Blob/File) and create an object URL locally
+      if (data.type === 'video-added' && !isAdmin) {
+        try {
+          const incoming = data.video as any;
+          const file = data.file as Blob | undefined;
+          const url = file ? URL.createObjectURL(file) : incoming.url;
+          const newVideo: Video = {
+            id: incoming.id,
+            title: incoming.title,
+            url,
+            duration: incoming.duration,
+            uploadedAt: new Date(incoming.uploadedAt),
+            size: incoming.size,
+          };
+
+          setVideos(prev => [...prev, newVideo]);
+        } catch (err) {
+          console.error('Failed to add incoming video', err);
+        }
       }
     };
 
@@ -80,13 +101,13 @@ export const useSyncState = (isAdmin: boolean = false) => {
   // Admin controls
   const broadcastState = useCallback((newState: Partial<PlaybackState>) => {
     if (!isAdmin) return;
-    
+
     const updatedState = {
       ...playbackState,
       ...newState,
       timestamp: Date.now(),
     };
-    
+
     setPlaybackState(updatedState);
     SYNC_CHANNEL.postMessage({ type: 'sync-state', state: updatedState });
   }, [isAdmin, playbackState]);
@@ -111,15 +132,45 @@ export const useSyncState = (isAdmin: boolean = false) => {
     broadcastState({ videoId: null, currentTime: 0, isPlaying: false });
   }, [broadcastState]);
 
-  const addVideo = useCallback((video: Omit<Video, 'id' | 'uploadedAt'>) => {
+  // Accept optional file when adding a video (admin will pass the File)
+  const addVideo = useCallback((video: { title: string; duration: number; size: number; file?: File; url?: string }) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const uploadedAt = new Date();
+
+    // If admin uploaded a File, create an object URL for local playback
+    if (isAdmin && video.file) {
+      const file = video.file as File;
+      const url = URL.createObjectURL(file);
+      const videoWithUrl: Video = {
+        id,
+        title: video.title,
+        url,
+        duration: video.duration,
+        uploadedAt,
+        size: video.size,
+      };
+
+      setVideos(prev => [...prev, videoWithUrl]);
+
+      // Broadcast to other clients so they can create their own object URL
+      SYNC_CHANNEL.postMessage({ type: 'video-added', video: { ...videoWithUrl, uploadedAt: videoWithUrl.uploadedAt.toISOString() }, file });
+
+      return videoWithUrl;
+    }
+
+    // If no file provided, expect a URL to be available
     const newVideo: Video = {
-      ...video,
-      id: Math.random().toString(36).substr(2, 9),
-      uploadedAt: new Date(),
+      id,
+      title: video.title,
+      url: video.url || '',
+      duration: video.duration,
+      uploadedAt,
+      size: video.size,
     };
+
     setVideos(prev => [...prev, newVideo]);
     return newVideo;
-  }, []);
+  }, [isAdmin]);
 
   const removeVideo = useCallback((videoId: string) => {
     setVideos(prev => prev.filter(v => v.id !== videoId));

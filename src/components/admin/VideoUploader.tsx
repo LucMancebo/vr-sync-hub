@@ -3,7 +3,7 @@ import { Upload, Film, X } from 'lucide-react';
 import { Video } from '@/types/video';
 
 interface VideoUploaderProps {
-  onUpload: (video: Omit<Video, 'id' | 'uploadedAt'>) => void;
+  onUpload: (video: { title: string; duration: number; size: number; file: File }) => void;
 }
 
 export const VideoUploader = ({ onUpload }: VideoUploaderProps) => {
@@ -40,12 +40,11 @@ export const VideoUploader = ({ onUpload }: VideoUploaderProps) => {
       });
     }, 200);
 
-    // Create object URL for the video
-    const url = URL.createObjectURL(file);
-
     // Get video duration
     const video = document.createElement('video');
-    video.src = url;
+    // Use object URL locally to load metadata
+    const tempUrl = URL.createObjectURL(file);
+    video.src = tempUrl;
     
     await new Promise<void>(resolve => {
       video.onloadedmetadata = () => resolve();
@@ -57,10 +56,14 @@ export const VideoUploader = ({ onUpload }: VideoUploaderProps) => {
       
       onUpload({
         title: file.name.replace(/\.[^/.]+$/, ''),
-        url,
+        // do not pass a permanent object URL — pass the File so it can be broadcast
+        file,
         duration: video.duration,
         size: file.size,
       });
+
+      // revoke temporary url
+      URL.revokeObjectURL(tempUrl);
 
       setIsUploading(false);
       setUploadProgress(0);

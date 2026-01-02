@@ -4,70 +4,93 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## How can I edit this code?
+# VR Sync Hub
 
-There are several ways of editing your application.
+Central de Sincronização de Vídeos para dispositivos de Realidade Virtual.
 
-**Use Lovable**
+Resumo
+ - Aplicação frontend em React + TypeScript construída com Vite e Tailwind CSS.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Como rodar localmente
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Instale dependências:
 
-**Use your preferred IDE**
+```bash
+npm install
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. Inicie o servidor de desenvolvimento:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Scripts úteis
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `npm run dev` — inicia o servidor Vite em modo desenvolvimento
+- `npm run build` — gera build de produção
+- `npm run preview` — visualiza o build gerado
+- `npm run lint` — executa ESLint
+- `npm run type-check` — checa tipos TypeScript sem emitir artefatos
+- `npm run format` — formata o código com Prettier
 
-**Use GitHub Codespaces**
+Estrutura principal do projeto
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `src/` — código-fonte React
+- `src/pages` — páginas da aplicação (`Index`, `Admin`, `VRPlayer`)
+- `src/components` — componentes reutilizáveis e UI
+- `vite.config.ts` — configuração do Vite (alias `@` para `src`)
+- `tsconfig.*.json` — configuração TypeScript
 
-## What technologies are used for this project?
+# VR Sync Hub
 
-This project is built with:
+Central de Sincronização de Vídeos para dispositivos de Realidade Virtual.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Resumo
+ - Aplicação frontend em React + TypeScript construída com Vite e Tailwind CSS.
 
-## How can I deploy this project?
+Como rodar localmente
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. Instale dependências:
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm install
+```
 
-Yes, you can!
+2. Inicie o servidor de desenvolvimento:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```bash
+npm run dev
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Scripts úteis
+
+- `npm run dev` — inicia o servidor Vite em modo desenvolvimento
+- `npm run build` — gera build de produção
+- `npm run preview` — visualiza o build gerado
+- `npm run lint` — executa ESLint
+- `npm run type-check` — checa tipos TypeScript sem emitir artefatos
+- `npm run format` — formata o código com Prettier
+
+Estrutura principal do projeto
+
+- `src/` — código-fonte React
+- `src/pages` — páginas da aplicação (`Index`, `Admin`, `VRPlayer`)
+- `src/components` — componentes reutilizáveis e UI
+- `vite.config.ts` — configuração do Vite (alias `@` para `src`)
+- `tsconfig.*.json` — configuração TypeScript
+
+Dependências relevantes
+
+- React, React Router, React Query
+- Tailwind CSS + shadcn-ui components
+- `lucide-react` para ícones
+
+Boas práticas recomendadas
+
+- Execute `npm run lint` e `npm run type-check` antes de abrir PRs.
+- Adicione testes e CI para `lint` / `type-check` / `build`.
+
+Contato
+
+Para dúvidas ou contribuições, abra uma issue ou PR neste repositório.

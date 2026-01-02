@@ -25,6 +25,13 @@ const Admin = () => {
     setPlaybackState(prev => ({ ...prev, currentTime: time }));
   }, [setPlaybackState]);
 
+  const handleVideoUpload = useCallback((video: { title: string; duration: number; size: number; file: File; }) => {
+    videoActions.addVideo({
+      ...video,
+      url: URL.createObjectURL(video.file),
+    });
+  }, [videoActions]);
+
   return (
     <div className="min-h-screen gradient-bg">
       {/* Header */}
