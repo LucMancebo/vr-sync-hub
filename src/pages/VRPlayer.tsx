@@ -104,7 +104,7 @@ const VRPlayer = () => {
           <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/10 flex items-center justify-center animate-float">
             <Wifi className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">VR Sync Hub</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">CortexVr</h1>
           <p className="text-muted-foreground text-lg">
             Aguardando seleção de vídeo...
           </p>

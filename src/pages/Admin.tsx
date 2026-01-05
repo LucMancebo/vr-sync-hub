@@ -36,7 +36,7 @@ const Admin = () => {
                 <Settings className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">VR Sync Hub</h1>
+                <h1 className="text-xl font-bold">CortexVr</h1>
                 <p className="text-xs text-muted-foreground">Painel de Administração</p>
               </div>
             </div>

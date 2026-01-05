@@ -4,7 +4,7 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-# VR Sync Hub
+# CortexVr
 
 Central de Sincronização de Vídeos para dispositivos de Realidade Virtual.
 
@@ -30,6 +30,11 @@ Scripts úteis
 - `npm run dev` — inicia o servidor Vite em modo desenvolvimento
 - `npm run build` — gera build de produção
 - `npm run preview` — visualiza o build gerado
+ - `npm run preview` — visualiza o build gerado
+
+PWA
+- Este projeto suporta PWA (Progressive Web App). O service worker e manifest são gerados pelo `vite-plugin-pwa` durante o `npm run build`.
+- Verifique `public/manifest.json` e `public/icons/` para metadados e ícones.
 - `npm run lint` — executa ESLint
 - `npm run type-check` — checa tipos TypeScript sem emitir artefatos
 - `npm run format` — formata o código com Prettier
@@ -42,7 +47,7 @@ Estrutura principal do projeto
 - `vite.config.ts` — configuração do Vite (alias `@` para `src`)
 - `tsconfig.*.json` — configuração TypeScript
 
-# VR Sync Hub
+# CortexVr
 
 Central de Sincronização de Vídeos para dispositivos de Realidade Virtual.
 

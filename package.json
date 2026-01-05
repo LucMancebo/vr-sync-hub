@@ -1,5 +1,5 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "cortexvr",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -74,6 +74,7 @@
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "@vitejs/plugin-react-swc": "^3.11.0",
+    "vite-plugin-pwa": "^0.18.2",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",

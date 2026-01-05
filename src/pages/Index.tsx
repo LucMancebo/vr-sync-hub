@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Settings, Glasses, Play, Wifi, Users, Clock, Zap } from 'lucide-react';
+import { Settings, Glasses, Play, Wifi, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -18,7 +18,7 @@ const Index = () => {
             <Play className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">VR Sync Hub</h1>
+            <h1 className="text-2xl font-bold">CortexVr</h1>
             <p className="text-xs text-muted-foreground">Central de Sincronização VR</p>
           </div>
         </div>
@@ -126,7 +126,8 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="relative z-10 container mx-auto px-6 py-8 text-center text-sm text-muted-foreground">
-        <p>VR Sync Hub • Central de Sincronização de Vídeos VR</p>
+        <p>CortexVr • Central de Sincronização de Vídeos VR</p>
+        <p>SkyX Tecnologia © {new Date().getFullYear()}</p>
       </footer>
     </div>
   );

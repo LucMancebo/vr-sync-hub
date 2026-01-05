@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { PlaybackState, ConnectedDevice, Video } from '@/types/video';
 
 // Simulated sync state - in production, this would use WebSockets
-const SYNC_CHANNEL = new BroadcastChannel('vr-sync');
+const SYNC_CHANNEL = new BroadcastChannel('cortexvr-sync');
 
 export const useSyncState = (isAdmin: boolean = false) => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
