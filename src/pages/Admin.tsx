@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { Settings, MonitorPlay, Upload, Users } from 'lucide-react';
+import { Settings, MonitorPlay, Upload } from 'lucide-react';
 import { useSyncState } from '@/hooks/useSyncState';
 import { VideoPlayer, VideoPlayerRef } from '@/components/VideoPlayer';
 import { VideoUploader } from '@/components/admin/VideoUploader';
@@ -24,13 +24,6 @@ const Admin = () => {
   const handleTimeUpdate = useCallback((time: number) => {
     setPlaybackState(prev => ({ ...prev, currentTime: time }));
   }, [setPlaybackState]);
-
-  const handleVideoUpload = useCallback((video: { title: string; duration: number; size: number; file: File; }) => {
-    videoActions.addVideo({
-      ...video,
-      url: URL.createObjectURL(video.file),
-    });
-  }, [videoActions]);
 
   return (
     <div className="min-h-screen gradient-bg">
