@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Maximize, Minimize, Wifi, WifiOff, Volume2, VolumeX } from 'lucide-react';
-import { useSyncState } from '@/hooks/useSyncState';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { VideoPlayer, VideoPlayerRef } from '@/components/VideoPlayer';
 
 const VRPlayer = () => {
-  const { playbackState, videos } = useSyncState(false);
+  const { playbackState, videos, isConnected } = useRealtimeSync(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -85,8 +85,17 @@ const VRPlayer = () => {
           showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
         }`}
       >
-        <Wifi className="w-4 h-4 text-success" />
-        <span className="text-sm text-white">Sincronizado</span>
+        {isConnected ? (
+          <>
+            <Wifi className="w-4 h-4 text-success" />
+            <span className="text-sm text-white">Sincronizado</span>
+          </>
+        ) : (
+          <>
+            <WifiOff className="w-4 h-4 text-yellow-500" />
+            <span className="text-sm text-white">Conectando...</span>
+          </>
+        )}
       </div>
 
       {/* Video player */}
