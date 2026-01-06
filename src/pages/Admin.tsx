@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
-import { Settings, MonitorPlay, Upload } from 'lucide-react';
-import { useSyncState } from '@/hooks/useSyncState';
+import { Settings, MonitorPlay, Upload, Wifi, WifiOff } from 'lucide-react';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { VideoPlayer, VideoPlayerRef } from '@/components/VideoPlayer';
 import { VideoUploader } from '@/components/admin/VideoUploader';
 import { VideoList } from '@/components/admin/VideoList';
@@ -14,8 +14,9 @@ const Admin = () => {
     connectedDevices, 
     videos, 
     controls, 
-    videoActions 
-  } = useSyncState(true);
+    videoActions,
+    isConnected,
+  } = useRealtimeSync(true);
   
   const playerRef = useRef<VideoPlayerRef>(null);
 
@@ -42,9 +43,22 @@ const Admin = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/20 text-success text-sm">
-                <span className="status-indicator connected" />
-                Sistema Online
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
+                isConnected 
+                  ? 'bg-success/20 text-success' 
+                  : 'bg-yellow-500/20 text-yellow-500'
+              }`}>
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-4 h-4" />
+                    Sincronização Ativa
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-4 h-4" />
+                    Conectando...
+                  </>
+                )}
               </div>
             </div>
           </div>
