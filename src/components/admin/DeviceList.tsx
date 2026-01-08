@@ -1,4 +1,4 @@
-import { Glasses, Monitor, Wifi, WifiOff } from 'lucide-react';
+import { Glasses, Monitor, Wifi, WifiOff, Battery, BatteryCharging, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { ConnectedDevice } from '@/types/video';
 
 interface DeviceListProps {
@@ -25,32 +25,56 @@ export const DeviceList = ({ devices }: DeviceListProps) => {
         </div>
       ) : (
         <div className="space-y-3">
-          {devices.map((device) => (
-            <div key={device.id} className="device-card">
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                {device.type === 'vr' ? (
-                  <Glasses className="w-5 h-5 text-primary" />
-                ) : (
-                  <Monitor className="w-5 h-5 text-muted-foreground" />
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <p className="font-medium">{device.name}</p>
-                <p className="text-xs text-muted-foreground font-mono">
-                  {device.id}
-                </p>
-              </div>
+          {devices.map((device) => {
+            const getBatteryIcon = () => {
+              if (device.batteryLevel === undefined) return null;
+              if (device.batteryCharging) return <BatteryCharging className="w-4 h-4 text-success" />;
+              if (device.batteryLevel <= 15) return <BatteryWarning className="w-4 h-4 text-destructive" />;
+              if (device.batteryLevel <= 30) return <BatteryLow className="w-4 h-4 text-yellow-500" />;
+              if (device.batteryLevel <= 60) return <BatteryMedium className="w-4 h-4 text-muted-foreground" />;
+              return <BatteryFull className="w-4 h-4 text-success" />;
+            };
 
-              <div className="flex items-center gap-2">
-                <span className={`status-indicator ${device.status}`} />
-                <span className="text-sm capitalize text-muted-foreground">
-                  {device.status === 'connected' ? 'Conectado' : 
-                   device.status === 'syncing' ? 'Sincronizando' : 'Desconectado'}
-                </span>
+            return (
+              <div key={device.id} className="device-card">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                  {device.type === 'vr' ? (
+                    <Glasses className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Monitor className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                
+                <div className="flex-1">
+                  <p className="font-medium">{device.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {device.id}
+                  </p>
+                </div>
+
+                {/* Battery indicator */}
+                {device.batteryLevel !== undefined && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary/50">
+                    {getBatteryIcon()}
+                    <span className={`text-sm font-medium ${
+                      device.batteryLevel <= 15 ? 'text-destructive' :
+                      device.batteryLevel <= 30 ? 'text-yellow-500' : 'text-foreground'
+                    }`}>
+                      {Math.round(device.batteryLevel)}%
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span className={`status-indicator ${device.status}`} />
+                  <span className="text-sm capitalize text-muted-foreground">
+                    {device.status === 'connected' ? 'Conectado' : 
+                     device.status === 'syncing' ? 'Sincronizando' : 'Desconectado'}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
