@@ -36,6 +36,7 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
   const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [videos, setVideos] = useState<Video[]>(DEMO_VIDEOS);
   const [isConnected, setIsConnected] = useState(false);
+  const [batteryInfo, setBatteryInfo] = useState<{ level: number; charging: boolean } | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const deviceId = useRef(`device-${Math.random().toString(36).substr(2, 9)}`);
@@ -59,6 +60,46 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
       },
     });
 
+    // Battery monitoring for VR devices
+    let batteryManager: any = null;
+    
+    const setupBattery = async () => {
+      if (isAdmin) return;
+      
+      try {
+        // @ts-ignore - Battery API is not in TypeScript types
+        if (navigator.getBattery) {
+          // @ts-ignore
+          batteryManager = await navigator.getBattery();
+          
+          const updateBattery = () => {
+            const info = {
+              level: batteryManager.level * 100,
+              charging: batteryManager.charging,
+            };
+            setBatteryInfo(info);
+            
+            // Update presence with battery info
+            if (channel) {
+              channel.track({
+                name: device.name,
+                type: device.type,
+                online_at: new Date().toISOString(),
+                batteryLevel: info.level,
+                batteryCharging: info.charging,
+              });
+            }
+          };
+          
+          updateBattery();
+          batteryManager.addEventListener('levelchange', updateBattery);
+          batteryManager.addEventListener('chargingchange', updateBattery);
+        }
+      } catch (error) {
+        console.log('[RealtimeSync] Battery API not available:', error);
+      }
+    };
+
     // Handle presence for device tracking
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState();
@@ -72,6 +113,8 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
           type: presence?.type || 'browser',
           status: 'connected' as const,
           lastSeen: new Date(),
+          batteryLevel: presence?.batteryLevel,
+          batteryCharging: presence?.batteryCharging,
         };
       });
       
@@ -133,6 +176,9 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
           online_at: new Date().toISOString(),
         });
 
+        // Setup battery monitoring after subscription
+        setupBattery();
+
         // If not admin, request current state from admin
         if (!isAdmin) {
           channel.send({
@@ -148,6 +194,10 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
 
     return () => {
       console.log('[RealtimeSync] Cleaning up channel...');
+      if (batteryManager) {
+        batteryManager.removeEventListener('levelchange', () => {});
+        batteryManager.removeEventListener('chargingchange', () => {});
+      }
       channel.untrack();
       supabase.removeChannel(channel);
       channelRef.current = null;
@@ -246,6 +296,7 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
     connectedDevices,
     videos,
     isConnected,
+    batteryInfo,
     controls: {
       play,
       pause,

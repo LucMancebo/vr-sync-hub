@@ -21,6 +21,8 @@ export interface ConnectedDevice {
   type: 'vr' | 'browser';
   status: 'connected' | 'syncing' | 'disconnected';
   lastSeen: Date;
+  batteryLevel?: number;
+  batteryCharging?: boolean;
 }
 
 export interface SyncMessage {
