@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { Settings, MonitorPlay, Upload, Wifi, WifiOff } from 'lucide-react';
+import { Settings, MonitorPlay, Upload, Wifi, WifiOff, CloudOff } from 'lucide-react';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { VideoPlayer, VideoPlayerRef } from '@/components/VideoPlayer';
 import { VideoUploader } from '@/components/admin/VideoUploader';
@@ -16,6 +16,9 @@ const Admin = () => {
     controls, 
     videoActions,
     isConnected,
+    isOnline,
+    lowBatteryWarning,
+    dismissBatteryWarning,
   } = useRealtimeSync(true);
   
   const playerRef = useRef<VideoPlayerRef>(null);
@@ -42,7 +45,15 @@ const Admin = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Offline mode indicator */}
+              {!isOnline && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-warning/20 text-warning">
+                  <CloudOff className="w-4 h-4" />
+                  <span className="hidden sm:inline">Modo Local</span>
+                </div>
+              )}
+              
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
                 isConnected 
                   ? 'bg-success/20 text-success' 
@@ -51,12 +62,12 @@ const Admin = () => {
                 {isConnected ? (
                   <>
                     <Wifi className="w-4 h-4" />
-                    Sincronização Ativa
+                    <span className="hidden sm:inline">Sincronização Ativa</span>
                   </>
                 ) : (
                   <>
                     <WifiOff className="w-4 h-4" />
-                    Conectando...
+                    <span className="hidden sm:inline">Conectando...</span>
                   </>
                 )}
               </div>
@@ -78,13 +89,21 @@ const Admin = () => {
               
               <div className="video-container">
                 {currentVideo ? (
-                  <VideoPlayer
-                    ref={playerRef}
-                    url={currentVideo.url}
-                    playbackState={playbackState}
-                    onTimeUpdate={handleTimeUpdate}
-                    isAdmin={true}
-                  />
+                  currentVideo.type === 'image' ? (
+                    <img 
+                      src={currentVideo.url} 
+                      alt={currentVideo.title}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <VideoPlayer
+                      ref={playerRef}
+                      url={currentVideo.url}
+                      playbackState={playbackState}
+                      onTimeUpdate={handleTimeUpdate}
+                      isAdmin={true}
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
@@ -113,9 +132,16 @@ const Admin = () => {
             <div className="glass-panel p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Upload className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-semibold">Upload de Vídeo</h2>
+                <h2 className="text-lg font-semibold">Upload de Mídia</h2>
               </div>
               <VideoUploader onUpload={videoActions.addVideo} />
+              
+              {/* Offline warning for uploads */}
+              {!isOnline && (
+                <p className="mt-3 text-xs text-warning">
+                  ⚠️ Arquivos locais não sincronizam entre dispositivos. Use URLs externas para sincronização.
+                </p>
+              )}
             </div>
 
             {/* Video Library */}
@@ -133,7 +159,11 @@ const Admin = () => {
             </div>
 
             {/* Connected Devices */}
-            <DeviceList devices={connectedDevices} />
+            <DeviceList 
+              devices={connectedDevices} 
+              lowBatteryWarning={lowBatteryWarning}
+              onDismissWarning={dismissBatteryWarning}
+            />
           </div>
         </div>
       </main>

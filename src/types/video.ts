@@ -6,6 +6,7 @@ export interface Video {
   duration: number;
   uploadedAt: Date;
   size: number;
+  type: 'video' | 'image'; // Support for panoramic images
 }
 
 export interface PlaybackState {
@@ -26,8 +27,9 @@ export interface ConnectedDevice {
 }
 
 export interface SyncMessage {
-  type: 'play' | 'pause' | 'seek' | 'load' | 'stop';
+  type: 'play' | 'pause' | 'seek' | 'load' | 'stop' | 'video-added' | 'video-removed' | 'request-state' | 'playback-state' | 'device-update';
   videoId?: string;
   currentTime?: number;
   timestamp: number;
+  payload?: any;
 }

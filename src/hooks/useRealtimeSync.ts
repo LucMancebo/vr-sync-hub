@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlaybackState, ConnectedDevice, Video } from '@/types/video';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { useLocalSync } from './useLocalSync';
 
 const ROOM_NAME = 'cortexvr-sync';
 
-// Demo videos
+// Demo videos with external URLs that work across devices
 const DEMO_VIDEOS: Video[] = [
   {
     id: '1',
@@ -14,6 +15,7 @@ const DEMO_VIDEOS: Video[] = [
     duration: 596,
     uploadedAt: new Date(),
     size: 158008374,
+    type: 'video',
   },
   {
     id: '2',
@@ -22,6 +24,7 @@ const DEMO_VIDEOS: Video[] = [
     duration: 653,
     uploadedAt: new Date(),
     size: 114984274,
+    type: 'video',
   },
 ];
 
@@ -36,10 +39,84 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
   const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [videos, setVideos] = useState<Video[]>(DEMO_VIDEOS);
   const [isConnected, setIsConnected] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [batteryInfo, setBatteryInfo] = useState<{ level: number; charging: boolean } | null>(null);
+  const [lowBatteryWarning, setLowBatteryWarning] = useState<string | null>(null);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const deviceId = useRef(`device-${Math.random().toString(36).substr(2, 9)}`);
+  const deviceId = useRef(`device-${Math.random().toString(36).substring(2, 11)}`);
+  const playbackStateRef = useRef(playbackState);
+  const videosRef = useRef(videos);
+
+  // Keep refs updated
+  useEffect(() => {
+    playbackStateRef.current = playbackState;
+  }, [playbackState]);
+
+  useEffect(() => {
+    videosRef.current = videos;
+  }, [videos]);
+
+  // Local sync for offline/local network mode
+  const { broadcast: localBroadcast } = useLocalSync(isAdmin, {
+    onPlaybackState: (state) => {
+      if (!isAdmin) {
+        setPlaybackState(state);
+      }
+    },
+    onVideoAdded: (video) => {
+      setVideos(prev => {
+        if (prev.find(v => v.id === video.id)) return prev;
+        return [...prev, { ...video, uploadedAt: new Date(video.uploadedAt) }];
+      });
+    },
+    onVideoRemoved: (videoId) => {
+      setVideos(prev => prev.filter(v => v.id !== videoId));
+    },
+    onDeviceUpdate: (device) => {
+      setConnectedDevices(prev => {
+        const existing = prev.findIndex(d => d.id === device.id);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = device;
+          return updated;
+        }
+        return [...prev, device];
+      });
+    },
+    onRequestState: () => {
+      if (isAdmin) {
+        // Send current state to new clients via local broadcast
+        localBroadcast({
+          type: 'playback-state',
+          timestamp: Date.now(),
+          payload: playbackStateRef.current,
+        });
+        // Also send videos
+        videosRef.current.forEach(video => {
+          localBroadcast({
+            type: 'video-added',
+            timestamp: Date.now(),
+            payload: { ...video, uploadedAt: video.uploadedAt.toISOString() },
+          });
+        });
+      }
+    },
+  });
+
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Setup realtime channel
   useEffect(() => {
@@ -51,21 +128,12 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
       lastSeen: new Date(),
     };
 
-    console.log(`[RealtimeSync] Connecting as ${isAdmin ? 'Admin' : 'VR Client'}...`);
-
-    const channel = supabase.channel(ROOM_NAME, {
-      config: {
-        presence: { key: deviceId.current },
-        broadcast: { self: false },
-      },
-    });
+    console.log(`[RealtimeSync] Connecting as ${isAdmin ? 'Admin' : 'VR Client'}... Online: ${isOnline}`);
 
     // Battery monitoring for VR devices
     let batteryManager: any = null;
     
     const setupBattery = async () => {
-      if (isAdmin) return;
-      
       try {
         // @ts-ignore - Battery API is not in TypeScript types
         if (navigator.getBattery) {
@@ -73,32 +141,93 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
           batteryManager = await navigator.getBattery();
           
           const updateBattery = () => {
-            const info = {
-              level: batteryManager.level * 100,
-              charging: batteryManager.charging,
-            };
+            const level = Math.round(batteryManager.level * 100);
+            const charging = batteryManager.charging;
+            
+            const info = { level, charging };
             setBatteryInfo(info);
             
-            // Update presence with battery info
-            if (channel) {
-              channel.track({
+            console.log('[RealtimeSync] Battery update:', info);
+            
+            // Check for low battery warning (40%)
+            if (level <= 40 && !charging) {
+              setLowBatteryWarning(`${device.name}: Bateria em ${level}%`);
+            } else {
+              setLowBatteryWarning(null);
+            }
+            
+            // Update presence with battery info via Supabase
+            if (channelRef.current && isOnline) {
+              channelRef.current.track({
                 name: device.name,
                 type: device.type,
                 online_at: new Date().toISOString(),
-                batteryLevel: info.level,
-                batteryCharging: info.charging,
+                batteryLevel: level,
+                batteryCharging: charging,
               });
             }
+            
+            // Also broadcast via local channel for offline mode
+            localBroadcast({
+              type: 'device-update',
+              timestamp: Date.now(),
+              payload: {
+                ...device,
+                batteryLevel: level,
+                batteryCharging: charging,
+                lastSeen: new Date(),
+              },
+            });
           };
           
           updateBattery();
           batteryManager.addEventListener('levelchange', updateBattery);
           batteryManager.addEventListener('chargingchange', updateBattery);
+          
+          // Update battery every 30 seconds
+          const batteryInterval = setInterval(updateBattery, 30000);
+          
+          return () => {
+            clearInterval(batteryInterval);
+            if (batteryManager) {
+              batteryManager.removeEventListener('levelchange', updateBattery);
+              batteryManager.removeEventListener('chargingchange', updateBattery);
+            }
+          };
+        } else {
+          console.log('[RealtimeSync] Battery API not supported');
         }
       } catch (error) {
         console.log('[RealtimeSync] Battery API not available:', error);
       }
+      return () => {};
     };
+
+    let batteryCleanup: () => void = () => {};
+    setupBattery().then(cleanup => { batteryCleanup = cleanup; });
+
+    // Setup local broadcast for offline/local network
+    if (!isAdmin) {
+      // Request state from admin via local channel
+      localBroadcast({
+        type: 'request-state',
+        timestamp: Date.now(),
+      });
+    }
+
+    // Only connect to Supabase if online
+    if (!isOnline) {
+      console.log('[RealtimeSync] Offline mode - using local sync only');
+      setIsConnected(true); // Mark as connected for local sync
+      return () => { batteryCleanup(); };
+    }
+
+    const channel = supabase.channel(ROOM_NAME, {
+      config: {
+        presence: { key: deviceId.current },
+        broadcast: { self: false },
+      },
+    });
 
     // Handle presence for device tracking
     channel.on('presence', { event: 'sync' }, () => {
@@ -155,10 +284,19 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
     channel.on('broadcast', { event: 'request-state' }, () => {
       if (isAdmin && channelRef.current) {
         console.log('[RealtimeSync] Sending current state to new client');
+        // Use ref to get current state
         channelRef.current.send({
           type: 'broadcast',
           event: 'playback-state',
-          payload: playbackState,
+          payload: playbackStateRef.current,
+        });
+        // Also send videos
+        videosRef.current.forEach(video => {
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'video-added',
+            payload: { ...video, uploadedAt: video.uploadedAt.toISOString() },
+          });
         });
       }
     });
@@ -169,15 +307,19 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
       if (status === 'SUBSCRIBED') {
         setIsConnected(true);
         
-        // Track presence
-        await channel.track({
+        // Track presence with initial battery info
+        const trackData: any = {
           name: device.name,
           type: device.type,
           online_at: new Date().toISOString(),
-        });
-
-        // Setup battery monitoring after subscription
-        setupBattery();
+        };
+        
+        if (batteryInfo) {
+          trackData.batteryLevel = batteryInfo.level;
+          trackData.batteryCharging = batteryInfo.charging;
+        }
+        
+        await channel.track(trackData);
 
         // If not admin, request current state from admin
         if (!isAdmin) {
@@ -194,22 +336,19 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
 
     return () => {
       console.log('[RealtimeSync] Cleaning up channel...');
-      if (batteryManager) {
-        batteryManager.removeEventListener('levelchange', () => {});
-        batteryManager.removeEventListener('chargingchange', () => {});
-      }
+      batteryCleanup();
       channel.untrack();
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [isAdmin]);
+  }, [isAdmin, isOnline, localBroadcast]);
 
-  // Broadcast state changes (admin only)
+  // Broadcast state changes (admin only) - both Supabase and Local
   const broadcastState = useCallback((newState: Partial<PlaybackState>) => {
-    if (!isAdmin || !channelRef.current) return;
+    if (!isAdmin) return;
 
     const updatedState: PlaybackState = {
-      ...playbackState,
+      ...playbackStateRef.current,
       ...newState,
       timestamp: Date.now(),
     };
@@ -217,12 +356,22 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
     console.log('[RealtimeSync] Broadcasting state:', updatedState);
     setPlaybackState(updatedState);
     
-    channelRef.current.send({
-      type: 'broadcast',
-      event: 'playback-state',
+    // Broadcast via Supabase (if online)
+    if (channelRef.current && isOnline) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'playback-state',
+        payload: updatedState,
+      });
+    }
+    
+    // Also broadcast via local channel (works offline)
+    localBroadcast({
+      type: 'playback-state',
+      timestamp: Date.now(),
       payload: updatedState,
     });
-  }, [isAdmin, playbackState]);
+  }, [isAdmin, isOnline, localBroadcast]);
 
   // Playback controls
   const play = useCallback(() => {
@@ -246,8 +395,8 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
   }, [broadcastState]);
 
   // Video management
-  const addVideo = useCallback((video: { title: string; duration: number; size: number; file?: File; url?: string }) => {
-    const id = Math.random().toString(36).substr(2, 9);
+  const addVideo = useCallback((video: { title: string; duration: number; size: number; file?: File; url?: string; type?: 'video' | 'image' }) => {
+    const id = Math.random().toString(36).substring(2, 11);
     const uploadedAt = new Date();
 
     let url = video.url || '';
@@ -262,32 +411,57 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
       duration: video.duration,
       uploadedAt,
       size: video.size,
+      type: video.type || 'video',
     };
 
     setVideos(prev => [...prev, newVideo]);
 
-    // Broadcast to other clients (note: File/Blob URLs won't work cross-device)
-    if (channelRef.current && video.url) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'video-added',
+    // Broadcast to other clients
+    // Note: Blob URLs won't work cross-device, only external URLs will sync
+    const isExternalUrl = video.url && !video.url.startsWith('blob:');
+    
+    if (isExternalUrl) {
+      if (channelRef.current && isOnline) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'video-added',
+          payload: { ...newVideo, uploadedAt: uploadedAt.toISOString() },
+        });
+      }
+      
+      localBroadcast({
+        type: 'video-added',
+        timestamp: Date.now(),
         payload: { ...newVideo, uploadedAt: uploadedAt.toISOString() },
       });
+    } else {
+      console.warn('[RealtimeSync] Blob URL detected - video will only be available locally');
     }
 
     return newVideo;
-  }, []);
+  }, [isOnline, localBroadcast]);
 
   const removeVideo = useCallback((videoId: string) => {
     setVideos(prev => prev.filter(v => v.id !== videoId));
     
-    if (channelRef.current) {
+    if (channelRef.current && isOnline) {
       channelRef.current.send({
         type: 'broadcast',
         event: 'video-removed',
         payload: { videoId },
       });
     }
+    
+    localBroadcast({
+      type: 'video-removed',
+      timestamp: Date.now(),
+      payload: { videoId },
+    });
+  }, [isOnline, localBroadcast]);
+
+  // Dismiss low battery warning
+  const dismissBatteryWarning = useCallback(() => {
+    setLowBatteryWarning(null);
   }, []);
 
   return {
@@ -296,7 +470,10 @@ export const useRealtimeSync = (isAdmin: boolean = false) => {
     connectedDevices,
     videos,
     isConnected,
+    isOnline,
     batteryInfo,
+    lowBatteryWarning,
+    dismissBatteryWarning,
     controls: {
       play,
       pause,
