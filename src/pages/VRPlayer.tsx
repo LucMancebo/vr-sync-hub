@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Maximize, Minimize, Wifi, WifiOff, Volume2, VolumeX } from 'lucide-react';
+import { Maximize, Minimize, Wifi, WifiOff, Volume2, VolumeX, CloudOff, Image } from 'lucide-react';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { VideoPlayer, VideoPlayerRef } from '@/components/VideoPlayer';
 
 const VRPlayer = () => {
-  const { playbackState, videos, isConnected } = useRealtimeSync(false);
+  const { playbackState, videos, isConnected, isOnline } = useRealtimeSync(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -70,7 +70,7 @@ const VRPlayer = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = currentVideo 
+  const progress = currentVideo && currentVideo.type === 'video' && currentVideo.duration > 0
     ? (playbackState.currentTime / currentVideo.duration) * 100 
     : 0;
 
@@ -85,6 +85,12 @@ const VRPlayer = () => {
           showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
         }`}
       >
+        {!isOnline && (
+          <div className="flex items-center gap-2 mr-2 pr-2 border-r border-white/20">
+            <CloudOff className="w-4 h-4 text-warning" />
+            <span className="text-xs text-warning">Local</span>
+          </div>
+        )}
         {isConnected ? (
           <>
             <Wifi className="w-4 h-4 text-success" />
@@ -98,15 +104,26 @@ const VRPlayer = () => {
         )}
       </div>
 
-      {/* Video player */}
+      {/* Video/Image player */}
       {currentVideo ? (
         <div className="w-full h-full">
-          <VideoPlayer
-            ref={playerRef}
-            url={currentVideo.url}
-            playbackState={playbackState}
-            isAdmin={false}
-          />
+          {currentVideo.type === 'image' ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <img 
+                src={currentVideo.url} 
+                alt={currentVideo.title}
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          ) : (
+            <VideoPlayer
+              ref={playerRef}
+              url={currentVideo.url}
+              playbackState={playbackState}
+              isAdmin={false}
+              isMuted={isMuted}
+            />
+          )}
         </div>
       ) : (
         <div className="text-center animate-fade-in">
@@ -115,11 +132,16 @@ const VRPlayer = () => {
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">CortexVr</h1>
           <p className="text-muted-foreground text-lg">
-            Aguardando seleção de vídeo...
+            Aguardando seleção de conteúdo...
           </p>
           <p className="text-muted-foreground text-sm mt-4">
             O administrador controla a reprodução
           </p>
+          {!isOnline && (
+            <p className="text-warning text-sm mt-2">
+              Modo offline - sincronização local ativa
+            </p>
+          )}
         </div>
       )}
 
@@ -130,49 +152,65 @@ const VRPlayer = () => {
             showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          {/* Progress bar */}
-          <div className="mb-4">
-            <div className="progress-bar h-1">
-              <div 
-                className="progress-bar-fill"
-                style={{ width: `${progress}%` }}
-              />
+          {/* Progress bar (only for videos) */}
+          {currentVideo.type === 'video' && (
+            <div className="mb-4">
+              <div className="progress-bar h-1">
+                <div 
+                  className="progress-bar-fill"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-white/70 font-mono mt-2">
+                <span>{formatTime(playbackState.currentTime)}</span>
+                <span>{formatTime(currentVideo.duration)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-xs text-white/70 font-mono mt-2">
-              <span>{formatTime(playbackState.currentTime)}</span>
-              <span>{formatTime(currentVideo.duration)}</span>
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-white font-semibold">{currentVideo.title}</h2>
+              <div className="flex items-center gap-2">
+                {currentVideo.type === 'image' && (
+                  <Image className="w-4 h-4 text-blue-400" />
+                )}
+                <h2 className="text-white font-semibold">{currentVideo.title}</h2>
+              </div>
               <div className="flex items-center gap-2 text-sm text-white/60">
-                {playbackState.isPlaying ? (
-                  <>
-                    <span className="status-indicator connected" />
-                    <span>Reproduzindo</span>
-                  </>
+                {currentVideo.type === 'video' ? (
+                  playbackState.isPlaying ? (
+                    <>
+                      <span className="status-indicator connected" />
+                      <span>Reproduzindo</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                      <span>Pausado</span>
+                    </>
+                  )
                 ) : (
                   <>
-                    <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                    <span>Pausado</span>
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span>Imagem panorâmica</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
-              >
-                {isMuted ? (
-                  <VolumeX className="w-5 h-5 text-white" />
-                ) : (
-                  <Volume2 className="w-5 h-5 text-white" />
-                )}
-              </button>
+              {currentVideo.type === 'video' && (
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-5 h-5 text-white" />
+                  ) : (
+                    <Volume2 className="w-5 h-5 text-white" />
+                  )}
+                </button>
+              )}
               
               <button
                 onClick={toggleFullscreen}

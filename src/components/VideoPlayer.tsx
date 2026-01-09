@@ -7,6 +7,7 @@ interface VideoPlayerProps {
   onTimeUpdate?: (time: number) => void;
   isAdmin?: boolean;
   className?: string;
+  isMuted?: boolean;
 }
 
 export interface VideoPlayerRef {
@@ -15,7 +16,7 @@ export interface VideoPlayerRef {
 }
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ url, playbackState, onTimeUpdate, isAdmin = false, className = '' }, ref) => {
+  ({ url, playbackState, onTimeUpdate, isAdmin = false, className = '', isMuted = false }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const lastSyncTime = useRef(0);
 
@@ -27,6 +28,13 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       },
       getCurrentTime: () => videoRef.current?.currentTime || 0,
     }));
+
+    // Sync muted state
+    useEffect(() => {
+      if (videoRef.current) {
+        videoRef.current.muted = isMuted;
+      }
+    }, [isMuted]);
 
     // Sync playback state
     useEffect(() => {
@@ -77,6 +85,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         playsInline
         preload="auto"
         crossOrigin="anonymous"
+        muted={isMuted}
       />
     );
   }
